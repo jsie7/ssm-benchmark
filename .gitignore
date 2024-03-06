@@ -1,0 +1,4 @@
+data/
+mamba-1.1.4/build/
+*.so
+*.egg-info/
