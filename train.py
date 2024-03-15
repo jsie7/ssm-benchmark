@@ -1,6 +1,5 @@
+import argparse
 import torch
-import torchvision
-import torchvision.transforms as transforms
 from mamba_ssm import Mamba as MambaLayer
 import wandb
 from tqdm import tqdm
@@ -8,6 +7,14 @@ import yaml
 from dataloaders import SequenceDataset
 
 ## MODEL DEF ##
+
+class GLU(torch.nn.Module):
+    def __init__(self, input_dim):
+        super().__init__()
+        self.linear = torch.nn.Linear(input_dim, input_dim * 2)
+    def forward(self, x):
+        out = self.linear(x)
+        return out[:, :, :x.shape[2]] * torch.sigmoid(out[:, :, x.shape[2]:])
 
 class MambaBlock(torch.nn.Module):
     def __init__(self, hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm):
@@ -60,6 +67,7 @@ def train(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_bloc
     print("Nr. of parameters: {0}".format(nr_params))
     wandb.log({"params": nr_params})
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=wd)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min = 5e-6)
     running_loss = 0.0
     for epoch in range(num_epochs):
         for X, y, _ in tqdm(trainloader):
@@ -73,6 +81,7 @@ def train(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_bloc
             optimizer.step()
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
+        scheduler.step()
 
         model.eval()
         running_accuracy = 0.0
@@ -114,6 +123,12 @@ def split_train_val(train, val_split):
     return train, val
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--config", type=str, default="cifar-10.yaml", help="experiment config file")
+    config = parser.parse_args().config
+    print("Using config {0}".format(config))
+
     # get GPU info
     if not torch.cuda.is_available():
         raise NotImplementedError("Cannot run on CPU!")
@@ -122,13 +137,12 @@ if __name__ == "__main__":
     print("Running on {0}".format(gpu_type))
     
     # get args
-    with open("configs/cifar-10.yaml") as stream:
+    with open("configs/"+config) as stream:
         try:
             args = yaml.safe_load(stream)            
         except yaml.YAMLError as exc:
             raise RuntimeError(exc)
 
-    args["dataset"] = "CIFAR-10"
     args["GPU"] = gpu_type
     
     print(yaml.dump(args))
@@ -143,12 +157,15 @@ if __name__ == "__main__":
     )
     
     ## prepare dataset
-    dataset = SequenceDataset.registry["cifar"](_name_="cifar", grayscale=True)
+    args["dataset"].pop("name") # remove logging name
+    dataset = SequenceDataset.registry[args["dataset"]["_name_"]](**args["dataset"])
     dataset.setup()
 
     # Dataloaders
     trainloader = dataset.train_dataloader(batch_size=args["train"]["batch_size"], shuffle=True)
-    testloader = dataset.test_dataloader(batch_size=args["train"]["batch_size"], shuffle=False)[None]
+    testloader = dataset.test_dataloader(batch_size=args["train"]["batch_size"], shuffle=False)
+    if type(testloader) is dict:
+        testloader = testloader[None]
     
     train(
         seed=args["seed"],

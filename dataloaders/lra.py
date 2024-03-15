@@ -84,7 +84,7 @@ class IMDB(SequenceDataset):
             xs, padding_value=self.vocab["<pad>"], batch_first=True
         )
         ys = torch.tensor(ys)
-        return xs, ys, {"lengths": lengths}
+        return xs.float()[:,:,None], ys, {"lengths": lengths}
 
         # self._collate_fn = collate_batch
 
@@ -279,7 +279,7 @@ class ListOps(SequenceDataset):
                 xs, padding_value=self.vocab["<pad>"], batch_first=True
             )
             ys = torch.tensor(ys)
-            return xs, ys, {"lengths": lengths}
+            return xs.float()[:,:,None], ys, {"lengths": lengths}
 
         self._collate_fn = collate_batch
 
