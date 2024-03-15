@@ -17,12 +17,20 @@ class GLU(torch.nn.Module):
         return out[:, :, :x.shape[2]] * torch.sigmoid(out[:, :, x.shape[2]:])
 
 class MambaBlock(torch.nn.Module):
-    def __init__(self, hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm):
+    def __init__(self, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm):
         super().__init__()
-        self.norm = torch.nn.LayerNorm(hidden_dim)
         self.mamba = MambaLayer(d_model=hidden_dim, d_state=state_dim, d_conv=conv_dim, expand=expansion)
+        if glu:
+            self.glu = GLU(hidden_dim)
+        else:
+            self.glu = None
         self.activation = torch.nn.GELU()
         self.dropout = torch.nn.Dropout(dropout)
+        if norm in ["layer"]:
+            self.norm = torch.nn.LayerNorm(hidden_dim)
+        elif norm in ["batch"]:
+            raise RuntimeError("dimensions don't agree for batch norm to work")
+            self.norm = torch.nn.BatchNorm1d(hidden_dim)
         self.prenorm = prenorm
     def forward(self, x):
         skip = x
@@ -30,16 +38,19 @@ class MambaBlock(torch.nn.Module):
             x = self.norm(x)
         x = self.mamba(x)
         x = self.dropout(self.activation(x))
+        if self.glu is not None:
+            x = self.glu(x)
+        x = self.dropout(x)
         x = x + skip
         if not self.prenorm:
             x = self.norm(x)
         return x
     
 class Mamba(torch.nn.Module):
-    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm, pooling="mean"):
+    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling="mean"):
         super().__init__()
         self.linear_encoder = torch.nn.Linear(input_dim, hidden_dim)
-        self.blocks = torch.nn.Sequential(*[MambaBlock(hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm) for _ in range(num_blocks)])
+        self.blocks = torch.nn.Sequential(*[MambaBlock(hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm) for _ in range(num_blocks)])
         self.linear_decoder = torch.nn.Linear(hidden_dim, output_dim)
         self.pooling = pooling
         self.softmax = torch.nn.LogSoftmax(dim=1)
@@ -59,10 +70,10 @@ class Mamba(torch.nn.Module):
 
 ## train loop ##
 
-def train(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm, pooling):
+def train(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling):
     torch.manual_seed(seed)
     device = "cuda"
-    model = Mamba(num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, prenorm, pooling).to(device)
+    model = Mamba(num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
     wandb.log({"params": nr_params})
@@ -182,6 +193,8 @@ if __name__ == "__main__":
         state_dim=args["model"]["state_dim"],
         conv_dim=args["model"]["conv_dim"],
         expansion=args["model"]["expansion"],
+        glu=args["model"]["glu"],
+        norm=args["model"]["norm"],
         prenorm=args["model"]["prenorm"],
         pooling=args["model"]["pooling"]
     )

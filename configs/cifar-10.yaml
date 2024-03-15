@@ -17,5 +17,7 @@ model:
   state_dim: 64
   conv_dim: 4
   expansion: 2
-  prenorm: False
+  glu: True
+  norm: "layer"
+  prenorm: True
   pooling: "max"
