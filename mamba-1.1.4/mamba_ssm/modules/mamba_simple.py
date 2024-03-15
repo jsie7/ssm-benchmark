@@ -101,18 +101,18 @@ class Mamba(nn.Module):
         self.dt_proj.bias._no_reinit = True
 
         # S4D real initialization
-        # A = repeat(
-        #     torch.arange(1, self.d_state + 1, dtype=torch.float32, device=device),
-        #     "n -> d n",
-        #     d=self.d_inner,
-        # ).contiguous()
-
-        # our init
         A = repeat(
-            torch.ones(self.d_state, dtype=torch.float32, device=device)*0.5,
+            torch.arange(1, self.d_state + 1, dtype=torch.float32, device=device),
             "n -> d n",
             d=self.d_inner,
         ).contiguous()
+
+        # our init
+        #A = repeat(
+        #    torch.ones(self.d_state, dtype=torch.float32, device=device)*0.5,
+        #    "n -> d n",
+        #    d=self.d_inner,
+        #).contiguous()
 
         A_log = torch.log(A)  # Keep A_log in fp32
         self.A_log = nn.Parameter(A_log)
