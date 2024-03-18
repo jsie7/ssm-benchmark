@@ -593,8 +593,9 @@ class AAN(SequenceDataset):
 
             # Concatenate two batches
             xs = torch.cat([xs1, xs2], dim=0)
+            ys = ys.repeat(2)
             lengths = torch.cat([lengths1, lengths2], dim=0)
-            return xs, ys, {"lengths": lengths}
+            return xs.float()[:,:,None], ys, {"lengths": lengths}
 
         self._collate_fn = collate_batch
 
