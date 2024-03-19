@@ -4,21 +4,17 @@ dataset:
   _name_: "cifar"
   grayscale: True
 train:
-  num_epochs: 30
+  num_epochs: 50
   batch_size: 32
-  lr: 0.0002
-  wd: 0.1
-  dropout: 0.0
+  lr: 0.0001
+  wd: 0.01
 model:
-  layer: "mamba"
+  layer: "griffin"
   num_blocks: 6
   input_dim: 1
   output_dim: 10
   hidden_dim: 128
-  state_dim: 64
-  conv_dim: 4
+  kernel_size: 4
   expansion: 2
-  glu: True
-  norm: "layer"
-  prenorm: True
-  pooling: "max"
+  gmlp_expansion: 2
+  pooling: "mean"
