@@ -10,6 +10,21 @@ from accelerated_scan.warp import scan
 
 ## MODEL DEF ##
 
+class MATCH(torch.nn.Module):
+    def __init__(self, input_dim, output_dim):
+        super().__init__()
+        self.encoder = torch.nn.Linear(input_dim, 512)
+        self.middle = torch.nn.Linear(512, 256)
+        self.decoder = torch.nn.Linear(256, output_dim)
+        self.activation = torch.nn.ReLU()
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.activation(x)
+        x = self.middle(x)
+        x = self.activation(x)
+        x = self.decoder(x)
+        return x
+
 class GLU(torch.nn.Module):
     def __init__(self, input_dim):
         super().__init__()
@@ -49,13 +64,16 @@ class MambaBlock(torch.nn.Module):
         return x
     
 class Mamba(torch.nn.Module):
-    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling="mean"):
+    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, dual, pooling="mean"):
         super().__init__()
         self.linear_encoder = torch.nn.Linear(input_dim, hidden_dim)
         self.blocks = torch.nn.Sequential(*[MambaBlock(hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm) for _ in range(num_blocks)])
         self.linear_decoder = torch.nn.Linear(hidden_dim, output_dim)
         self.pooling = pooling
         self.softmax = torch.nn.LogSoftmax(dim=1)
+        self.dual = dual
+        if dual:
+            self.match = MATCH(output_dim*2, output_dim)
     def forward(self, x):
         x = self.linear_encoder(x)
         x = self.blocks(x)
@@ -68,6 +86,9 @@ class Mamba(torch.nn.Module):
         else:
             x = x # no pooling
         x = self.linear_decoder(x)
+        if self.dual:
+            (x1, x2) = torch.split(x, int(x.shape[0]/2))
+            x = self.match(torch.concatenate((x1, x2), dim=1))
         return torch.softmax(x, dim=1)
 
 class RMSNorm(torch.nn.Module):
