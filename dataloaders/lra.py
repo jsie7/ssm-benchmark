@@ -26,7 +26,7 @@ class IMDB(SequenceDataset):
     def init_defaults(self):
         return {
             "l_max": 4096,
-            "fixed_size": True,
+            "fixed_size": False,
             "level": "char",
             "min_freq": 15,
             "seed": 42,
@@ -229,6 +229,7 @@ class ListOps(SequenceDataset):
     def init_defaults(self):
         return {
             "l_max": 2048,
+            "fixed_size": False,
             "append_bos": False,
             "append_eos": True,
             # 'max_vocab': 20, # Actual size 18
@@ -283,6 +284,8 @@ class ListOps(SequenceDataset):
             xs = nn.utils.rnn.pad_sequence(
                 xs, padding_value=self.vocab["<pad>"], batch_first=True
             )
+            if self.fixed_size:
+                xs = nn.ConstantPad1d((0, self.l_max - xs.shape[1]), self.vocab["<pad>"])(xs)
             ys = torch.tensor(ys)
             return xs.float()[:,:,None], ys, {"lengths": lengths}
 
@@ -521,7 +524,8 @@ class AAN(SequenceDataset):
     @property
     def init_defaults(self):
         return {
-            "l_max": 4000,
+            "l_max": 4098,
+            "fixed_size": False,
             # 'max_vocab': 100, # Full size 98
             "append_bos": False,
             "append_eos": True,
@@ -585,6 +589,8 @@ class AAN(SequenceDataset):
             xs1 = nn.utils.rnn.pad_sequence(
                 xs1, padding_value=self.vocab["<pad>"], batch_first=True
             )
+            if self.fixed_size:
+                xs1 = nn.ConstantPad1d((0, self.l_max - xs1.shape[1]), self.vocab["<pad>"])(xs1)
             xs2 = nn.utils.rnn.pad_sequence(
                 xs2, padding_value=self.vocab["<pad>"], batch_first=True
             )
@@ -598,7 +604,6 @@ class AAN(SequenceDataset):
 
             # Concatenate two batches
             xs = torch.cat([xs1, xs2], dim=0)
-            ys = ys.repeat(2)
             lengths = torch.cat([lengths1, lengths2], dim=0)
             return xs.float()[:,:,None], ys, {"lengths": lengths}
 
