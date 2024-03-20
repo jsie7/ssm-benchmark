@@ -26,6 +26,7 @@ class IMDB(SequenceDataset):
     def init_defaults(self):
         return {
             "l_max": 4096,
+            "fixed_size": True,
             "level": "char",
             "min_freq": 15,
             "seed": 42,
@@ -80,9 +81,13 @@ class IMDB(SequenceDataset):
     def _collate_fn(self, batch):
         xs, ys = zip(*[(data["input_ids"], data["label"]) for data in batch])
         lengths = torch.tensor([len(x) for x in xs])
+
+        # pad to l_max
         xs = nn.utils.rnn.pad_sequence(
             xs, padding_value=self.vocab["<pad>"], batch_first=True
         )
+        if self.fixed_size:
+            xs = nn.ConstantPad1d((0, self.l_max - xs.shape[1]), self.vocab["<pad>"])(xs)
         ys = torch.tensor(ys)
         return xs.float()[:,:,None], ys, {"lengths": lengths}
 
