@@ -189,10 +189,10 @@ class GriffinBlock(torch.nn.Module):
 
 ## train loop ##
 
-def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling):
+def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, dual, pooling):
     torch.manual_seed(seed)
     device = "cuda"
-    model = Mamba(num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, pooling).to(device)
+    model = Mamba(num_blocks, input_dim, output_dim, hidden_dim, state_dim, conv_dim, expansion, dropout, glu, norm, prenorm, dual, pooling).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
     wandb.log({"params": nr_params})
@@ -372,6 +372,7 @@ if __name__ == "__main__":
             glu=args["model"]["glu"],
             norm=args["model"]["norm"],
             prenorm=args["model"]["prenorm"],
+            dual=args["model"]["dual"],
             pooling=args["model"]["pooling"]
         )
     elif args["model"]["layer"] == "griffin":
