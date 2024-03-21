@@ -1,0 +1,22 @@
+seed: 1919
+dataset:
+  name: "AAN"
+  _name_: "aan"
+  fixed_size: True
+  n_workers: 8
+train:
+  num_epochs: 30
+  batch_size: 20
+  lr: 0.0001
+  wd: 0.01
+model:
+  layer: "griffin"
+  num_blocks: 6
+  input_dim: 1
+  output_dim: 2
+  hidden_dim: 256
+  kernel_size: 4
+  expansion: 2
+  gmlp_expansion: 2
+  dual: False
+  pooling: "mean"
