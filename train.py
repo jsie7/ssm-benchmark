@@ -156,22 +156,25 @@ class Griffin(torch.nn.Module):
         super().__init__()
         self.hawk_norm = RMSNorm(dim=dim)
         self.hawk = Hawk(dim=dim, expansion_factor=expansion, kernel_size=kernel_size)
-        self.hawk_gmlp_norm = RMSNorm(dim=dim)
-        self.hawk_gmlp = GatedMLP(dim=dim, expansion_factor=gmlp_expansion)
+        # self.hawk_gmlp_norm = RMSNorm(dim=dim)
+        # self.hawk_gmlp = GatedMLP(dim=dim, expansion_factor=gmlp_expansion)
 
     def forward(self, x):
         x = x + self.hawk(self.hawk_norm(x))
-        x = x + self.hawk_gmlp(self.hawk_gmlp_norm(x))
+        # x = x + self.hawk_gmlp(self.hawk_gmlp_norm(x))
         return x
     
 class GriffinBlock(torch.nn.Module):
-    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, pooling):
+    def __init__(self, num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, dual, pooling):
         super().__init__()
         self.linear_encoder = torch.nn.Linear(input_dim, hidden_dim)
         self.blocks = torch.nn.Sequential(*[Griffin(hidden_dim, expansion, gmlp_expansion, kernel_size) for _ in range(num_blocks)])
         self.linear_decoder = torch.nn.Linear(hidden_dim, output_dim)
         self.pooling = pooling
         self.softmax = torch.nn.LogSoftmax(dim=1)
+        self.dual = dual
+        if dual:
+            self.match = MATCH(output_dim*2, output_dim)
 
     def forward(self, x):
         x = self.linear_encoder(x)
@@ -185,6 +188,9 @@ class GriffinBlock(torch.nn.Module):
         else:
             x = x # no pooling
         x = self.linear_decoder(x)
+        if self.dual:
+            (x1, x2) = torch.split(x, int(x.shape[0]/2))
+            x = self.match(torch.concatenate((x1, x2), dim=1))
         return torch.softmax(x, dim=1)
 
 ## train loop ##
@@ -211,7 +217,7 @@ def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, nu
             optimizer.step()
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
-        scheduler.step(epoch)
+        scheduler.step()
         wandb.log({"lr": optimizer.param_groups[0]['lr']})
 
         model.eval()
@@ -244,10 +250,10 @@ def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, nu
         wandb.log({"train acc": train_acc, "test acc": test_acc, "train loss": train_loss, "test loss": test_loss})
         model.train()
 
-def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, pooling):
+def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, dual, pooling):
     torch.manual_seed(seed)
     device = "cuda"
-    model = GriffinBlock(num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, pooling).to(device)
+    model = GriffinBlock(num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, dual, pooling).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
     wandb.log({"params": nr_params})
@@ -266,7 +272,7 @@ def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, 
             optimizer.step()
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
-        scheduler.step(epoch)
+        scheduler.step()
         wandb.log({"lr": optimizer.param_groups[0]['lr']})
 
         model.eval()
@@ -390,6 +396,7 @@ if __name__ == "__main__":
             expansion=args["model"]["expansion"],
             gmlp_expansion=args["model"]["gmlp_expansion"],
             kernel_size=args["model"]["kernel_size"],
+            dual=args["model"]["dual"],
             pooling=args["model"]["pooling"]
         )
     else:
