@@ -524,7 +524,7 @@ class AAN(SequenceDataset):
     @property
     def init_defaults(self):
         return {
-            "l_max": 4098,
+            "l_max": 4096,
             "fixed_size": False,
             # 'max_vocab': 100, # Full size 98
             "append_bos": False,
@@ -600,7 +600,6 @@ class AAN(SequenceDataset):
             xs1 = F.pad(xs1, (0, L-xs1.size(1)), value=self.vocab["<pad>"])
             xs2 = F.pad(xs2, (0, L-xs2.size(1)), value=self.vocab["<pad>"])
             ys = torch.tensor(ys)
-            # return xs1, xs2, ys, lengths1, lengths2
 
             # Concatenate two batches
             xs = torch.cat([xs1, xs2], dim=0)
@@ -627,7 +626,7 @@ class AAN(SequenceDataset):
             delimiter="\t",
             column_names=["label", "input1_id", "input2_id", "text1", "text2"],
             keep_in_memory=True,
-        )  # True)
+        )
         dataset = dataset.remove_columns(["input1_id", "input2_id"])
         new_features = dataset["train"].features.copy()
         new_features["label"] = Value("int32")

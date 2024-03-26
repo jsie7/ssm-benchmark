@@ -107,7 +107,7 @@ class Mamba(nn.Module):
             d=self.d_inner,
         ).contiguous()
 
-        # our init
+        # for eigenvalues closer to unit disk
         #A = repeat(
         #    torch.ones(self.d_state, dtype=torch.float32, device=device)*0.5,
         #    "n -> d n",

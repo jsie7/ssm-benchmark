@@ -46,6 +46,7 @@ class MambaBlock(torch.nn.Module):
         if norm in ["layer"]:
             self.norm = torch.nn.LayerNorm(hidden_dim)
         elif norm in ["batch"]:
+            # TODO: add batch norm
             raise RuntimeError("dimensions don't agree for batch norm to work")
             self.norm = torch.nn.BatchNorm1d(hidden_dim)
         self.prenorm = prenorm
@@ -156,12 +157,12 @@ class Griffin(torch.nn.Module):
         super().__init__()
         self.hawk_norm = RMSNorm(dim=dim)
         self.hawk = Hawk(dim=dim, expansion_factor=expansion, kernel_size=kernel_size)
-        # self.hawk_gmlp_norm = RMSNorm(dim=dim)
-        # self.hawk_gmlp = GatedMLP(dim=dim, expansion_factor=gmlp_expansion)
+        self.hawk_gmlp_norm = RMSNorm(dim=dim)
+        self.hawk_gmlp = GatedMLP(dim=dim, expansion_factor=gmlp_expansion)
 
     def forward(self, x):
         x = x + self.hawk(self.hawk_norm(x))
-        # x = x + self.hawk_gmlp(self.hawk_gmlp_norm(x))
+        x = x + self.hawk_gmlp(self.hawk_gmlp_norm(x))
         return x
     
 class GriffinBlock(torch.nn.Module):
@@ -218,7 +219,6 @@ def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, nu
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
         scheduler.step()
-        wandb.log({"lr": optimizer.param_groups[0]['lr']})
 
         model.eval()
         running_accuracy = 0.0
@@ -247,7 +247,7 @@ def train_mamba(seed, trainloader, testloader, num_epochs, learning_rate, wd, nu
         test_acc = running_accuracy / len(testloader)
         print("Test accuracy: {0:.4f}\n".format(test_acc))
 
-        wandb.log({"train acc": train_acc, "test acc": test_acc, "train loss": train_loss, "test loss": test_loss})
+        wandb.log({"train acc": train_acc, "test acc": test_acc, "train loss": train_loss, "test loss": test_loss, "lr": optimizer.param_groups[0]['lr']})
         model.train()
 
 def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, num_blocks, input_dim, output_dim, hidden_dim, expansion, gmlp_expansion, kernel_size, dual, pooling):
@@ -273,7 +273,6 @@ def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, 
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
         scheduler.step()
-        wandb.log({"lr": optimizer.param_groups[0]['lr']})
 
         model.eval()
         running_accuracy = 0.0
@@ -302,7 +301,7 @@ def train_griffin(seed, trainloader, testloader, num_epochs, learning_rate, wd, 
         test_acc = running_accuracy / len(testloader)
         print("Test accuracy: {0:.4f}\n".format(test_acc))
 
-        wandb.log({"train acc": train_acc, "test acc": test_acc, "train loss": train_loss, "test loss": test_loss})
+        wandb.log({"train acc": train_acc, "test acc": test_acc, "train loss": train_loss, "test loss": test_loss, "lr": optimizer.param_groups[0]['lr']})
         model.train()
 
 def split_train_val(train, val_split):
