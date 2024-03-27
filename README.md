@@ -1,5 +1,7 @@
 # SSM Benchmark on Long-range Arena (LRA)
 
+**Note:** This repo is still under development. Currently only the configs for CIFAR-10 are available, but we will add the other configs including links to some example W&B runs in the coming days.
+
 This repository provides the implementation for the paper:
 
 **State Space Models as Foundation Models: A Control Theoretic Overview**  
