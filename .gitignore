@@ -4,3 +4,4 @@ mamba-1.1.4/build/
 *.egg-info/
 wandb/
 *__pycache__*
+test.ipynb
