@@ -1,4 +1,8 @@
 seed: 1919
+wandb:
+  key: "58d1b0b4e77ad3dd9ebd08eb490255e83aa70bfe"
+  entity: "ssm-eth"
+  project: "lra-benchmark"
 dataset:
   name: "CIFAR-10"
   _name_: "cifar"
@@ -9,7 +13,7 @@ train:
   lr: 0.0001
   wd: 0.01
 model:
-  layer: "griffin"
+  layer: "hawk"
   num_blocks: 6
   input_dim: 1
   output_dim: 10
@@ -17,4 +21,7 @@ model:
   kernel_size: 4
   expansion: 2
   gmlp_expansion: 2
+  dropout: 0.0
+  init: "uniform"
+  dual: False
   pooling: "mean"

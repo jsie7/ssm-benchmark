@@ -1,4 +1,8 @@
 seed: 1919
+wandb:
+  key: "58d1b0b4e77ad3dd9ebd08eb490255e83aa70bfe"
+  entity: "ssm-eth"
+  project: "lra-benchmark"
 dataset:
   name: "CIFAR-10"
   _name_: "cifar"
@@ -8,7 +12,6 @@ train:
   batch_size: 32
   lr: 0.0002
   wd: 0.1
-  dropout: 0.0
 model:
   layer: "mamba"
   num_blocks: 6
@@ -18,7 +21,9 @@ model:
   state_dim: 64
   conv_dim: 4
   expansion: 2
+  dropout: 0.0
   glu: True
   norm: "layer"
+  dual: False
   prenorm: True
-  pooling: "max"
+  pooling: "mean"
