@@ -2,20 +2,19 @@
 
 Basic datasets including MNIST and CIFAR will auto-download. Source code for these datamodules are in [basic.py](basic.py).
 
-By default, data is downloaded to `./data/`  by default, where `.` is the top level directory of this repository (e.g. 'safari').
+By default, data is downloaded to `data/` (in the top-level folder of this repo) by default.
 
 ## Advanced Usage
 
 After downloading and preparing data, the paths can be configured in several ways.
 
 1. Suppose that it is desired to download all data to a different folder, for example a different disk.
-The data path can be configured by setting the environment variable `DATA_PATH`, which defaults to `./data`.
+The data path can be configured by setting the environment variable `DATA_PATH`.
 
 2. For fine-grained control over the path of a particular dataset, set `dataset.data_dir` in the config. For example, if the LRA ListOps files are located in `/home/lra/listops-1000/` instead of the default `./data/listops/`,
 pass in `+dataset.data_dir=/home/lra/listops-1000` on the command line or modify the config file directly.
 
 3. As a simple workaround, softlinks can be set, e.g. `ln -s /home/lra/listops-1000 ./data/listops`
-
 
 # Data Preparation
 
