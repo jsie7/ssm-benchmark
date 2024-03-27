@@ -1,5 +1,9 @@
 # Copyright (c) 2023, Tri Dao, Albert Gu.
 
+# According to the license agreement, below is the statement of changes to this file
+#   1. Added option to initialize eigenvalues of A closer to the unit disk
+#      by changing initialization in L114.
+
 import math
 from typing import Optional
 
