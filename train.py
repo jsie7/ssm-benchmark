@@ -7,13 +7,14 @@ from dataloaders import SequenceDataset
 
 from models import Mamba, Hawk
 
-def train_mamba(seed, trainloader, testloader, train_config, model_config):
+def train_mamba(seed, trainloader, testloader, wandb_config, train_config, model_config):
     torch.manual_seed(seed)
     device = "cuda"
     model = Mamba(**model_config).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
-    wandb.log({"params": nr_params})
+    if wandb_config is not None:
+        wandb.log({"params": nr_params})
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config["lr"], weight_decay=train_config["wd"])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train_config["num_epochs"], eta_min = 5e-6)
     running_loss = 0.0
@@ -58,20 +59,24 @@ def train_mamba(seed, trainloader, testloader, train_config, model_config):
         test_acc = running_accuracy / len(testloader)
         print("Test accuracy: {0:.4f}\n".format(test_acc))
 
-        wandb.log({"train acc": train_acc,
-                   "test acc": test_acc,
-                   "train loss": train_loss,
-                   "test loss": test_loss,
-                   "lr": optimizer.param_groups[0]['lr']})
+        if wandb_config is not None:
+            wandb.log(
+                {"train acc": train_acc,
+                 "test acc": test_acc,
+                 "train loss": train_loss,
+                 "test loss": test_loss,
+                 "lr": optimizer.param_groups[0]['lr']}
+                )
         model.train()
 
-def train_hawk(seed, trainloader, testloader, train_config, model_config):
+def train_hawk(seed, trainloader, testloader, wandb_config, train_config, model_config):
     torch.manual_seed(seed)
     device = "cuda"
     model = Hawk(**model_config).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
-    wandb.log({"params": nr_params})
+    if wandb_config is not None:
+        wandb.log({"params": nr_params})
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config["lr"], weight_decay=train_config["lr"])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train_config["num_epochs"], eta_min = 5e-6)
     running_loss = 0.0
@@ -116,11 +121,14 @@ def train_hawk(seed, trainloader, testloader, train_config, model_config):
         test_acc = running_accuracy / len(testloader)
         print("Test accuracy: {0:.4f}\n".format(test_acc))
 
-        wandb.log({"train acc": train_acc,
-                   "test acc": test_acc,
-                   "train loss": train_loss,
-                   "test loss": test_loss,
-                   "lr": optimizer.param_groups[0]['lr']})
+        if wandb_config is not None:
+            wandb.log(
+                {"train acc": train_acc,
+                 "test acc": test_acc,
+                 "train loss": train_loss,
+                 "test loss": test_loss,
+                 "lr": optimizer.param_groups[0]['lr']}
+                )
         model.train()
 
 def split_train_val(train, val_split):
@@ -154,41 +162,50 @@ if __name__ == "__main__":
             raise RuntimeError(exc)
 
     args["GPU"] = gpu_type
+
+    # get wandb config
+    if "wandb" in args:
+        wandb_config = args.pop("wandb")
+    else:
+        wandb_config = None
     
     print("\nCONFIG:")
     print(yaml.dump(args))
 
-    ## split configs
+    # split configs
     data_config = args["dataset"]
     train_config = args["train"]
     model_config = args["model"]
     layer = model_config.pop("layer") # remove layer name
 
     # start wandb logging
-    wandb.login(key="58d1b0b4e77ad3dd9ebd08eb490255e83aa70bfe")
-    wandb.init(
-            entity="ssm-eth",
-            project="lra-benchmark",
-            config=args,
-            job_type="train",
-    )
+    if wandb_config is not None:
+        wandb.login(key=wandb_config["key"])
+        wandb.init(
+                entity=wandb_config["entity"],
+                project=wandb_config["project"],
+                config=args,
+                job_type="train",
+        )
     
-    ## prepare dataset
+    # prepare dataset
     data_config.pop("name") # remove logging name
     dataset = SequenceDataset.registry[data_config["_name_"]](**data_config)
     dataset.setup()
 
-    # Dataloaders
+    # dataloaders
     trainloader = dataset.train_dataloader(batch_size=train_config["batch_size"], shuffle=True)
     testloader = dataset.test_dataloader(batch_size=train_config["batch_size"], shuffle=False)
     if type(testloader) is dict:
         testloader = testloader[None]
     
+    # start train loop
     if layer == "mamba":
         train_mamba(
             args["seed"],
             trainloader,
             testloader,
+            wandb_config,
             train_config,
             model_config
         )
@@ -197,10 +214,12 @@ if __name__ == "__main__":
             args["seed"],
             trainloader,
             testloader,
+            wandb_config,
             train_config,
             model_config
         )
     else:
         raise RuntimeError("{0} is not a valid model option".format(layer))
-
-    wandb.finish()
+    
+    if wandb_config is not None:
+        wandb.finish()
