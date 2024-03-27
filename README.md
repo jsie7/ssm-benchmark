@@ -4,8 +4,8 @@ This repository provides the implementation for the paper:
 
 **State Space Models as Foundation Models: A Control Theoretic Overview**  
 Carmen Amo Alonso\*, Jerome Sieber\*, Melanie N. Zeilinger  
-Submitted to the 63rd IEEE Conference on Decision and Control (CDC), 2024.
-(\*equal contribution)
+Submitted to the 63rd IEEE Conference on Decision and Control (CDC), 2024.  
+(\*equal contribution)  
 [arXiv](https://arxiv.org/abs/2403.16899)
 
 ## References
@@ -16,7 +16,8 @@ This repository reuses code from various other repositories.
 - `dataloaders/` is an adapted implementation of the code provided in the [S5 repository](https://github.com/lindermanlab/S5/tree/main).
 
 ## Requirements & Installation
-To run the code on your own machine, run `pip install -r requirements.txt`. Then, install `mamba-ssm` in development mode with `pip install -e xy`.
+To run the code on your own machine, run `pip install -r requirements.txt`. Then, install `mamba-ssm` in development mode with `pip install mamba-1.1.4/`. Finally, build the `accelerated-scan` package by running `python -m build` in the `accelerated-scan-0.1.2/` folder and install it with `pip install accelerated-scan-0.1.2/`.  
+(**Warning:** The `accelerated-scan` version shipped with this repo only requires `torch >= 2.0.0`, i.e., the `triton` method will not work properly.)
 
 ## Data Preparation
 See the dataloaders [README](dataloaders/README.md) for more details.
@@ -28,6 +29,7 @@ To log with W&B, fill in the wandb arguments in the config files.
 ## Repository Structure
 Directories and files that ship with GitHub repo:
 ```
+accelerated-scan-0.1.2/ Snapshot of accelerated-scan release 0.1.2, with downgraded torch requirement.
 configs/                YAML configuration files for each experiment.
 dataloaders/            Code mainly derived from S5 processing each LRA dataset.
 mamba-1.1.4/            Snapshot of mamba-ssm release 1.1.4. If installed in development mode, change the model in here.
