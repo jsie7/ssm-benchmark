@@ -176,7 +176,6 @@ if __name__ == "__main__":
     data_config = args["dataset"]
     train_config = args["train"]
     model_config = args["model"]
-    layer = model_config.pop("layer") # remove layer name
 
     # start wandb logging
     if wandb_config is not None:
@@ -198,6 +197,9 @@ if __name__ == "__main__":
     testloader = dataset.test_dataloader(batch_size=train_config["batch_size"], shuffle=False)
     if type(testloader) is dict:
         testloader = testloader[None]
+
+    # extract model class [mamba | hawk]
+    layer = model_config.pop("layer")
     
     # start train loop
     if layer == "mamba":
