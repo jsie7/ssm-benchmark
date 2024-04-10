@@ -9,15 +9,15 @@ dataset:
   grayscale: True
 train:
   num_epochs: 30
-  batch_size: 32
+  batch_size: 64
   lr: 0.0002
-  wd: 0.1
+  wd: 0.01
 model:
   layer: "mamba"
   num_blocks: 6
   input_dim: 1
   output_dim: 10
-  hidden_dim: 128
+  hidden_dim: 256
   state_dim: 64
   conv_dim: 4
   expansion: 2
@@ -25,5 +25,5 @@ model:
   glu: True
   norm: "layer"
   dual: False
-  prenorm: True
+  prenorm: False
   pooling: "mean"

@@ -8,7 +8,7 @@ dataset:
   _name_: "cifar"
   grayscale: True
 train:
-  num_epochs: 50
+  num_epochs: 30
   batch_size: 32
   lr: 0.0001
   wd: 0.01
@@ -17,10 +17,10 @@ model:
   num_blocks: 6
   input_dim: 1
   output_dim: 10
-  hidden_dim: 128
+  hidden_dim: 256
   kernel_size: 4
-  expansion: 2
-  gmlp_expansion: 2
+  expansion: 1
+  gmlp_expansion: 1.5
   dropout: 0.0
   init: "uniform"
   dual: False
