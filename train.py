@@ -1,27 +1,35 @@
 import argparse
 import torch
+import pytorch_warmup as warmup
 import wandb
 from tqdm import tqdm
 import yaml
+import sys
 from dataloaders import SequenceDataset
 
-from models import Mamba, Hawk
+from models import Mamba, Transformer
+#, Hawk, SEaHawk
 
-def train_mamba(seed, trainloader, testloader, wandb_config, train_config, model_config):
+def train(seed, trainloader, testloader, model_cls,  wandb_config, train_config, model_config, checkpoint):
     torch.manual_seed(seed)
     device = "cuda"
-    model = Mamba(**model_config).to(device)
+    embedding = model_config["embedding"]
+    model = model_cls(model_config).to(device)
     nr_params = sum(p.numel() for p in model.parameters())
     print("Nr. of parameters: {0}".format(nr_params))
     if wandb_config is not None:
         wandb.log({"params": nr_params})
     optimizer = torch.optim.AdamW(model.parameters(), lr=train_config["lr"], weight_decay=train_config["wd"])
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train_config["num_epochs"], eta_min = 5e-6)
+    warmup_scheduler = warmup.LinearWarmup(optimizer, train_config["warmup"])
     running_loss = 0.0
     for epoch in range(train_config["num_epochs"]):
         for X, y, _ in tqdm(trainloader):
             optimizer.zero_grad()
-            X = X.to(device)
+            if embedding:
+                X = X.to(device)
+            else:
+                X = X.float()[:,:,None].to(device)
             y = y.to(device)
             y_hat = model(X)
             loss = torch.nn.functional.cross_entropy(y_hat, y)
@@ -30,13 +38,17 @@ def train_mamba(seed, trainloader, testloader, wandb_config, train_config, model
             optimizer.step()
         train_loss = running_loss/len(trainloader)
         print("Loss: {0:.3f}".format(train_loss))
-        scheduler.step()
+        with warmup_scheduler.dampening():
+            scheduler.step()
 
         model.eval()
         running_accuracy = 0.0
         with torch.no_grad():
             for X, y, _ in tqdm(trainloader):
-                X = X.to(device)
+                if embedding:
+                    X = X.to(device)
+                else:
+                    X = X.float()[:,:,None].to(device)
                 y = y.to(device)
                 y_hat = model(X)
                 accuracy = (y_hat.argmax(dim=1) == y).float().sum() / len(y)
@@ -48,7 +60,10 @@ def train_mamba(seed, trainloader, testloader, wandb_config, train_config, model
         running_loss = 0.0
         with torch.no_grad():
             for X, y, _ in tqdm(testloader):
-                X = X.to(device)
+                if embedding:
+                    X = X.to(device)
+                else:
+                    X = X.float()[:,:,None].to(device)
                 y = y.to(device)
                 y_hat = model(X)
                 loss = torch.nn.functional.cross_entropy(y_hat, y)
@@ -69,67 +84,8 @@ def train_mamba(seed, trainloader, testloader, wandb_config, train_config, model
                 )
         model.train()
 
-def train_hawk(seed, trainloader, testloader, wandb_config, train_config, model_config):
-    torch.manual_seed(seed)
-    device = "cuda"
-    model = Hawk(**model_config).to(device)
-    nr_params = sum(p.numel() for p in model.parameters())
-    print("Nr. of parameters: {0}".format(nr_params))
-    if wandb_config is not None:
-        wandb.log({"params": nr_params})
-    optimizer = torch.optim.AdamW(model.parameters(), lr=train_config["lr"], weight_decay=train_config["lr"])
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=train_config["num_epochs"], eta_min = 5e-6)
-    running_loss = 0.0
-    for epoch in range(train_config["num_epochs"]):
-        for X, y, _ in tqdm(trainloader):
-            optimizer.zero_grad()
-            X = X.to(device)
-            y = y.to(device)
-            y_hat = model(X)
-            loss = torch.nn.functional.cross_entropy(y_hat, y)
-            running_loss += loss.item()
-            loss.backward()
-            optimizer.step()
-        train_loss = running_loss/len(trainloader)
-        print("Loss: {0:.3f}".format(train_loss))
-        scheduler.step()
-
-        model.eval()
-        running_accuracy = 0.0
-        with torch.no_grad():
-            for X, y, _ in tqdm(trainloader):
-                X = X.to(device)
-                y = y.to(device)
-                y_hat = model(X)
-                accuracy = (y_hat.argmax(dim=1) == y).float().sum() / len(y)
-                running_accuracy += accuracy
-        train_acc = running_accuracy / len(trainloader)
-        print("Train accuracy: {0:.4f}".format(train_acc))
-
-        running_accuracy = 0.0
-        running_loss = 0.0
-        with torch.no_grad():
-            for X, y, _ in tqdm(testloader):
-                X = X.to(device)
-                y = y.to(device)
-                y_hat = model(X)
-                loss = torch.nn.functional.cross_entropy(y_hat, y)
-                running_loss += loss.item()
-                accuracy = (y_hat.argmax(dim=1) == y).float().sum() / len(y)
-                running_accuracy += accuracy
-        test_loss = running_loss/len(testloader)
-        test_acc = running_accuracy / len(testloader)
-        print("Test accuracy: {0:.4f}\n".format(test_acc))
-
-        if wandb_config is not None:
-            wandb.log(
-                {"train acc": train_acc,
-                 "test acc": test_acc,
-                 "train loss": train_loss,
-                 "test loss": test_loss,
-                 "lr": optimizer.param_groups[0]['lr']}
-                )
-        model.train()
+    if checkpoint:
+        torch.save(model.state_dict(), '/cluster/home/jsieber/projects/ssm-benchmark/checkpoint/ckpt.pth')
 
 def split_train_val(train, val_split):
     train_len = int(len(train) * (1.0-val_split))
@@ -162,6 +118,7 @@ if __name__ == "__main__":
             raise RuntimeError(exc)
 
     args["GPU"] = gpu_type
+    checkpoint = args["save"]
 
     # get wandb config
     if "wandb" in args:
@@ -181,6 +138,8 @@ if __name__ == "__main__":
     if wandb_config is not None:
         wandb.login(key=wandb_config["key"])
         wandb.init(
+                group=wandb_config["group"],
+                name=wandb_config["name"],
                 entity=wandb_config["entity"],
                 project=wandb_config["project"],
                 config=args,
@@ -198,30 +157,34 @@ if __name__ == "__main__":
     if type(testloader) is dict:
         testloader = testloader[None]
 
-    # extract model class [mamba | hawk]
+    # extract model class [mamba | transformer | etc.]
     layer = model_config.pop("layer")
     
     # start train loop
     if layer == "mamba":
-        train_mamba(
-            args["seed"],
-            trainloader,
-            testloader,
-            wandb_config,
-            train_config,
-            model_config
-        )
-    elif layer == "hawk":
-        train_hawk(
-            args["seed"],
-            trainloader,
-            testloader,
-            wandb_config,
-            train_config,
-            model_config
-        )
+        model_cls = Mamba
+    elif layer == "transformer":
+        model_cls = Transformer
+    # elif layer == "hawk":
+    #     model_cls = Hawk
+    # elif layer == "seahawk":
+    #     model_cls = SEaHawk
     else:
         raise RuntimeError("{0} is not a valid model option".format(layer))
     
-    if wandb_config is not None:
-        wandb.finish()
+    train(
+        args["seed"],
+        trainloader,
+        testloader,
+        model_cls,
+        wandb_config,
+        train_config,
+        model_config,
+        checkpoint
+    )
+    
+    try:
+        if wandb_config is not None:
+            wandb.finish()
+    except:
+        sys.exit(0)

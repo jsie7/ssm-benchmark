@@ -4,26 +4,25 @@ wandb:
   entity: "ssm-eth"
   project: "lra-benchmark"
 dataset:
-  name: "AAN"
-  _name_: "aan"
-  n_workers: 8
+  name: "LISTOPS"
+  _name_: "listops"
 train:
-  num_epochs: 30
-  batch_size: 16
+  num_epochs: 50
+  batch_size: 64
   lr: 0.0001
   wd: 0.01
 model:
   layer: "mamba"
-  num_blocks: 6
+  num_blocks: 10
   input_dim: 1
-  output_dim: 2
-  hidden_dim: 256
+  output_dim: 10
+  hidden_dim: 64
   state_dim: 64
   conv_dim: 4
-  expansion: 1.5
+  expansion: 3
   dropout: 0.0
   glu: True
   norm: "layer"
-  dual: True
-  prenorm: True
+  dual: False
+  prenorm: False
   pooling: "mean"

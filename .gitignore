@@ -2,6 +2,7 @@ data/
 mamba-1.1.4/build/
 *.so
 *.egg-info/
+*.out
 wandb/
 *__pycache__*
 test.ipynb

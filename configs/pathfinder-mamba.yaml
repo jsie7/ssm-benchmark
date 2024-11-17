@@ -4,12 +4,13 @@ wandb:
   entity: "ssm-eth"
   project: "lra-benchmark"
 dataset:
-  name: "AAN"
-  _name_: "aan"
-  n_workers: 8
+  name: "Pathfinder-32"
+  _name_: "pathfinder"
+  resolution: 32
+  data_dir: "/cluster/scratch/jsieber/pathfinder/pathfinder32"
 train:
-  num_epochs: 30
-  batch_size: 16
+  num_epochs: 100
+  batch_size: 32
   lr: 0.0001
   wd: 0.01
 model:
@@ -17,13 +18,13 @@ model:
   num_blocks: 6
   input_dim: 1
   output_dim: 2
-  hidden_dim: 256
+  hidden_dim: 128
   state_dim: 64
   conv_dim: 4
-  expansion: 1.5
+  expansion: 4
   dropout: 0.0
   glu: True
   norm: "layer"
-  dual: True
   prenorm: True
+  dual: False
   pooling: "mean"

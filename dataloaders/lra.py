@@ -9,6 +9,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import torchtext
+from torchtext import vocab as tf_vocab
 import torchvision
 from einops.layers.torch import Rearrange, Reduce
 from PIL import Image  # Only used for Pathfinder
@@ -89,7 +90,10 @@ class IMDB(SequenceDataset):
         if self.fixed_size:
             xs = nn.ConstantPad1d((0, self.l_max - xs.shape[1]), self.vocab["<pad>"])(xs)
         ys = torch.tensor(ys)
-        return xs.float()[:,:,None], ys, {"lengths": lengths}
+        if self.fixed_size:
+            return xs, ys, {"lengths": self.l_max}
+        else:
+            return xs, ys, {"lengths": lengths}
 
         # self._collate_fn = collate_batch
 
@@ -119,7 +123,7 @@ class IMDB(SequenceDataset):
             load_from_cache_file=False,
             num_proc=max(self.n_workers, 1),
         )
-        vocab = torchtext.vocab.build_vocab_from_iterator(
+        vocab = tf_vocab.build_vocab_from_iterator(
             dataset["train"]["tokens"],
             min_freq=self.min_freq,
             specials=(
@@ -287,7 +291,7 @@ class ListOps(SequenceDataset):
             if self.fixed_size:
                 xs = nn.ConstantPad1d((0, self.l_max - xs.shape[1]), self.vocab["<pad>"])(xs)
             ys = torch.tensor(ys)
-            return xs.float()[:,:,None], ys, {"lengths": lengths}
+            return xs, ys, {"lengths": lengths}
 
         self._collate_fn = collate_batch
 
@@ -322,7 +326,7 @@ class ListOps(SequenceDataset):
             load_from_cache_file=False,
             num_proc=max(self.n_workers, 1),
         )
-        vocab = torchtext.vocab.build_vocab_from_iterator(
+        vocab = tf_vocab.build_vocab_from_iterator(
             dataset["train"]["tokens"],
             specials=(
                 ["<pad>", "<unk>"]
@@ -604,7 +608,7 @@ class AAN(SequenceDataset):
             # Concatenate two batches
             xs = torch.cat([xs1, xs2], dim=0)
             lengths = torch.cat([lengths1, lengths2], dim=0)
-            return xs.float()[:,:,None], ys, {"lengths": lengths}
+            return xs, ys, {"lengths": lengths}
 
         self._collate_fn = collate_batch
 

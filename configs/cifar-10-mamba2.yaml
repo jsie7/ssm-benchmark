@@ -2,7 +2,7 @@ seed: 1919
 save: True
 wandb:
   group: "CIFAR10"
-  name: "S6 - Mamba"
+  name: "SSD - Mamba-2"
   key: "58d1b0b4e77ad3dd9ebd08eb490255e83aa70bfe"
   entity: "ssm-eth"
   project: "neurips-2024"
@@ -18,14 +18,14 @@ train:
   warmup: 5
 model:
   layer: "mamba"
-  version: "mamba1"
+  version: "mamba2"
   num_layers: 2
   input_dim: 1
   output_dim: 10
-  hidden_dim: 256
+  hidden_dim: 128
   state_dim: 64
   conv_dim: 4
-  expansion: 2
+  expansion: 1
   dropout: 0.0
   glu: True
   norm: "layer"

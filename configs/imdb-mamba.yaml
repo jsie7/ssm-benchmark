@@ -1,8 +1,8 @@
 seed: 1919
-# wandb:
-#   key: ""
-#   entity: ""
-#   project: ""
+wandb:
+  key: "58d1b0b4e77ad3dd9ebd08eb490255e83aa70bfe"
+  entity: "ssm-eth"
+  project: "lra-benchmark"
 dataset:
   name: "IMDB"
   _name_: "imdb"

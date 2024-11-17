@@ -4,25 +4,24 @@ wandb:
   entity: "ssm-eth"
   project: "lra-benchmark"
 dataset:
-  name: "AAN"
-  _name_: "aan"
-  fixed_size: True
-  n_workers: 8
+  name: "CIFAR-10"
+  _name_: "cifar"
+  grayscale: True
 train:
   num_epochs: 30
   batch_size: 16
-  lr: 0.0001
+  lr: 0.001
   wd: 0.01
 model:
-  layer: "hawk"
+  layer: "seahawk"
   num_blocks: 6
   input_dim: 1
-  output_dim: 2
+  output_dim: 10
   hidden_dim: 256
   kernel_size: 4
-  expansion: 1
+  state_dim: 16
   gmlp_expansion: 1
   dropout: 0.0
-  init: "exp"
-  dual: True
+  init: "uniform"
+  dual: False
   pooling: "mean"
